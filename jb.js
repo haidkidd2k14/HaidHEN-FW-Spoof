@@ -199,15 +199,29 @@ let allDone = false,
 
     const KPATCH_FILE =
       "patches/" + (off.kpatch || fwKey.replace(".", "") + ".bin");
-    // O clique em jb.html define a escolha em memoria, sem alterar a URL.
-    // Usa uma lista fechada de nomes para evitar carregamento arbitrario.
+    // O clique em jb.html seleciona HEN, HaidHEN ou .bin de payloads/.
+    // Construcao local do caminho; nenhum hash, query ou URL externa e aceito.
     const payloadChoice = window.__jbSelectedPayload;
+    let selectedBin = null;
+    if (typeof payloadChoice === "string" && payloadChoice.indexOf("payloads/") === 0) {
+      const encodedName = payloadChoice.slice("payloads/".length);
+      try {
+        const decodedName = decodeURIComponent(encodedName);
+        if (decodedName.length > 4 && decodedName.length <= 240 &&
+            /\.bin$/i.test(decodedName) && !/[\/\\?#\x00-\x1f]/.test(decodedName) &&
+            encodeURIComponent(decodedName) === encodedName) {
+          selectedBin = payloadChoice;
+        }
+      } catch (e) {}
+      if (!selectedBin) {
+        mark("PAYLOAD-INVALID", "Invalid filename for payloads/");
+        return;
+      }
+    }
     const PAYLOAD_FILE =
-      payloadChoice === "hen"
-        ? "hen.bin"
-        : payloadChoice === "haidhen"
-          ? "haidhen.bin"
-          : off.payload || "payload.bin";
+      payloadChoice === "hen" ? "hen.bin" :
+      payloadChoice === "haidhen" ? "haidhen.bin" :
+      selectedBin || off.payload || "payload.bin";
     const needPatch = ["k_sysent_661", "k_jmp_rsi"].filter(
       (k) => off[k] === undefined,
     );
@@ -303,7 +317,7 @@ let allDone = false,
       // Mantem o payload escolhido apenas para o reload automatico imediato.
       // Nao persiste a selecao entre reinicializacoes do console.
       try {
-        if (payloadChoice === "hen" || payloadChoice === "haidhen") {
+        if (payloadChoice === "hen" || payloadChoice === "haidhen" || selectedBin) {
           sessionStorage.setItem(
             "jb-retry-payload-v2",
             JSON.stringify({ name: payloadChoice, expires: Date.now() + 12000 }),
