@@ -1,0 +1,23 @@
+MENU PAYLOADS - Team haidkidd
+
+Copie jb.html, jb.js, ps4_offsets.js, index.html e cache.appcache para a raiz do site.
+Copie payloads/index.json para a pasta payloads/ existente.
+Mantenha hen.bin, haidhen.bin, core.js, mem.js, int64.js, rpc_worker.js e patches/ sem alterações.
+
+IMPORTANTE: payloads/index.json inicia como []. Não sabemos os arquivos .bin
+da sua pasta. Edite a lista com os NOMES EXATOS de cada .bin, por exemplo:
+["arquivo1.bin", "arquivo 2.bin"]
+Só arquivos da lista aparecem no menu; atualize a lista quando adicionar/remover .bin.
+
+O host estático não disponibiliza uma listagem de pastas de forma confiável.
+O index.json é a fonte da lista. O menu mostra os nomes sem .bin.
+
+Cache: o índice fica disponível offline. Os .bin da pasta payloads/ NÃO ficam
+automaticamente disponíveis offline: para isso, inclua também linhas com
+'payloads/arquivo.bin' em cache.appcache e altere o comentário de versão.
+Não inclua arquivos .bin indisponíveis no cache.appcache, pois isso pode
+impedir o cache inteiro de ser atualizado.
+
+O carregador existente exige que o primeiro byte do .bin seja 0xE9;
+nem todos os arquivos .bin são executáveis compatíveis com este carregador.
+A sintaxe e o menu foram conferidos, mas o exploit não foi testado no PS4.

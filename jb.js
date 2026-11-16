@@ -202,12 +202,25 @@ let allDone = false,
     // O clique em jb.html define a escolha em memoria, sem alterar a URL.
     // Usa uma lista fechada de nomes para evitar carregamento arbitrario.
     const payloadChoice = window.__jbSelectedPayload;
+    // Additional payloads must be a single .bin filename under payloads/.
+    // The HTML page passes an encoded filename; no arbitrary URLs are accepted.
+    let additionalPayload = null;
+    if (typeof payloadChoice === "string" &&
+        payloadChoice.indexOf("payloads/") === 0) {
+      const encoded = payloadChoice.slice(9);
+      try {
+        const filename = decodeURIComponent(encoded);
+        if (filename.length <= 128 &&
+            /^[^\/\\?#\x00-\x1f\x7f]+\.bin$/i.test(filename) &&
+            encodeURIComponent(filename) === encoded) {
+          additionalPayload = "payloads/" + encoded;
+        }
+      } catch (e) {}
+    }
     const PAYLOAD_FILE =
-      payloadChoice === "hen"
-        ? "hen.bin"
-        : payloadChoice === "haidhen"
-          ? "haidhen.bin"
-          : off.payload || "payload.bin";
+      payloadChoice === "hen" ? "hen.bin" :
+      payloadChoice === "haidhen" ? "haidhen.bin" :
+      additionalPayload || off.payload || "payload.bin";
     const needPatch = ["k_sysent_661", "k_jmp_rsi"].filter(
       (k) => off[k] === undefined,
     );
@@ -303,7 +316,8 @@ let allDone = false,
       // Mantem o payload escolhido apenas para o reload automatico imediato.
       // Nao persiste a selecao entre reinicializacoes do console.
       try {
-        if (payloadChoice === "hen" || payloadChoice === "haidhen") {
+        if (payloadChoice === "hen" || payloadChoice === "haidhen" ||
+            additionalPayload !== null) {
           sessionStorage.setItem(
             "jb-retry-payload-v2",
             JSON.stringify({ name: payloadChoice, expires: Date.now() + 12000 }),
