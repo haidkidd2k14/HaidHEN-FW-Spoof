@@ -3,10 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Team haidkidd - Payloads</title>
-    <!-- Se usar dominio proprio, defina "usuario/repositorio" abaixo.
-         Em https://usuario.github.io/repositorio/ a deteccao e automatica. -->
-    <meta name="github-repo" content="" />
+    <title>Team haidkidd goldhen</title>
     <style>
       html,
       body {
@@ -178,55 +175,6 @@
         outline: 2px solid #7fd0a0;
         background: #215039;
       }
-      #btn-payloads { border-color: #57456e; background: #30203f; color: #e2c9ff; }
-      #btn-payloads:hover, #btn-payloads:focus { outline-color: #c49afa; background: #433053; }
-      #payloads-panel {
-        display: none;
-        position: fixed;
-        top: 50%; left: 14px; right: 14px;
-        transform: translateY(-50%);
-        max-width: 570px;
-        margin: auto;
-        text-align: center;
-      }
-      #payloads-panel h1 { color: #e6ebf2; font-size: 22px; margin: 0 0 8px; }
-      #payloads-status { color: #98a8b7; margin: 0 0 12px; min-height: 20px; font-size: 13px; }
-      #payloads-list {
-        max-height: 47vh;
-        overflow-y: auto;
-        border: 1px solid #2b3440;
-        border-radius: 9px;
-        padding: 8px;
-        background: #10151c;
-      }
-      .payload-entry {
-        display: block;
-        box-sizing: border-box;
-        width: 100%;
-        text-align: left;
-        margin: 4px 0;
-        padding: 12px 15px;
-        border: 1px solid #34533e;
-        border-radius: 6px;
-        background: #193a2b;
-        color: #baf3ca;
-        font: 700 16px/1.3 "Segoe UI", system-ui, sans-serif;
-        cursor: pointer;
-        overflow-wrap: anywhere;
-      }
-      .payload-entry:hover, .payload-entry:focus {
-        outline: 2px solid #7fd0a0;
-        background: #215039;
-      }
-      .panel-controls { margin-top: 13px; display: flex; gap: 10px; justify-content: center; }
-      .panel-control {
-        padding: 11px 18px; border: 1px solid #465064; border-radius: 7px;
-        background: #1e2835; color: #e6ebf2;
-        font: 600 14px "Segoe UI", system-ui, sans-serif; cursor: pointer;
-      }
-      .panel-control:focus, .panel-control:hover { outline: 2px solid #7fd0a0; }
-      .panel-control:disabled { opacity: .5; cursor: default; }
-      #payloads-error { color: #d08a7f; }
       #btn-haidhen { border-color: #334b62; background: #1b3448; color: #bbdafa; }
       #btn-haidhen:hover, #btn-haidhen:focus {
         outline-color: #8cbaed;
@@ -258,16 +206,6 @@
       <div class="hen-buttons">
         <button id="btn-hen" class="hen-button" type="button">HEN<small>hen.bin</small></button>
         <button id="btn-haidhen" class="hen-button" type="button">HaidHEN<small>haidhen.bin</small></button>
-        <button id="btn-payloads" class="hen-button" type="button">Payloads<small>pasta payloads/</small></button>
-      </div>
-    </div>
-    <div id="payloads-panel" aria-label="Lista de payloads">
-      <h1>Payloads</h1>
-      <p id="payloads-status" role="status">Selecione um arquivo .bin</p>
-      <div id="payloads-list"></div>
-      <div class="panel-controls">
-        <button id="btn-payloads-back" class="panel-control" type="button">Voltar</button>
-        <button id="btn-payloads-refresh" class="panel-control" type="button">Atualizar lista</button>
       </div>
     </div>
     <div id="spin"></div>
@@ -279,126 +217,21 @@
     <script type="module">
       const choice = document.getElementById("choice");
       const spin = document.getElementById("spin");
-      const panel = document.getElementById("payloads-panel");
-      const list = document.getElementById("payloads-list");
-      const status = document.getElementById("payloads-status");
       const btnHen = document.getElementById("btn-hen");
       const btnHaidhen = document.getElementById("btn-haidhen");
-      const btnPayloads = document.getElementById("btn-payloads");
-      const btnBack = document.getElementById("btn-payloads-back");
-      const btnRefresh = document.getElementById("btn-payloads-refresh");
       let started = false;
-      let loading = false;
-
-      // Somente nomes diretos de arquivos .bin, nao caminhos nem URLs externas.
-      function cleanName(name) {
-        return typeof name === "string" &&
-          name.length > 4 && name.length <= 240 && /\.bin$/i.test(name) &&
-          !/[\/\\?#\x00-\x1f]/.test(name) &&
-          name !== "." && name !== "..";
-      }
-
-      function uniqueNames(names) {
-        const seen = Object.create(null);
-        const result = [];
-        for (const name of names) {
-          if (!cleanName(name) || seen[name]) continue;
-          seen[name] = true;
-          result.push(name);
-        }
-        return result.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-      }
-
-      function repoId() {
-        const configured = document.querySelector('meta[name="github-repo"]');
-        const value = configured ? configured.getAttribute("content").trim() : "";
-        if (/^[\w.-]+\/[\w.-]+$/.test(value)) return value;
-        const host = location.hostname.toLowerCase();
-        if (!/^[a-z0-9-]+\.github\.io$/.test(host)) return "";
-        const owner = host.slice(0, -".github.io".length);
-        const parts = location.pathname.split("/").filter(Boolean);
-        // Project Pages: /nome-do-repo/jb.html
-        // User Pages: /jb.html  (repo = usuario.github.io)
-        const repo = parts.length >= 2 || (parts.length === 1 && !/\.html?$/i.test(parts[0]))
-          ? parts[0] : owner + ".github.io";
-        return owner + "/" + repo;
-      }
-
-      async function githubFiles(repo) {
-        const parts = repo.split("/");
-        const url = "https://api.github.com/repos/" +
-          encodeURIComponent(parts[0]) + "/" + encodeURIComponent(parts[1]) +
-          "/contents/payloads?per_page=1000";
-        const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) throw new Error("GitHub HTTP " + response.status);
-        const entries = await response.json();
-        if (!Array.isArray(entries)) throw new Error("Resposta invalida da API GitHub");
-        return uniqueNames(entries.filter(x => x && x.type === "file").map(x => x.name));
-      }
-
-      async function manifestFiles() {
-        // Alternativa para servidores sem listagem de diretorios ou site offline.
-        // Formatos aceitos: ["x.bin",...] ou {"payloads":["x.bin",...]}.
-        const response = await fetch("./payloads/index.json?_=" + Date.now(), { cache: "no-store" });
-        if (!response.ok) throw new Error("Manifesto HTTP " + response.status);
-        const data = await response.json();
-        const raw = Array.isArray(data) ? data : data && data.payloads;
-        if (!Array.isArray(raw)) throw new Error("index.json invalido");
-        return uniqueNames(raw.map(x => typeof x === "string" ? x : x && x.name));
-      }
-
-      async function autoIndexFiles() {
-        // Apache/nginx com listagem habilitada; GitHub Pages nao lista diretorios.
-        const response = await fetch("./payloads/?_=" + Date.now(), { cache: "no-store" });
-        if (!response.ok) throw new Error("Diretorio HTTP " + response.status);
-        const source = await response.text();
-        const doc = new DOMParser().parseFromString(source, "text/html");
-        const anchors = doc.querySelectorAll("a[href]");
-        const names = [];
-        for (const a of anchors) {
-          const href = a.getAttribute("href");
-          if (!href || href.indexOf("/") !== -1 || href[0] === "?") continue;
-          try { names.push(decodeURIComponent(href.split("?")[0])); } catch (e) {}
-        }
-        const result = uniqueNames(names);
-        if (!result.length) throw new Error("Sem listagem de diretorio");
-        return result;
-      }
-
-      async function discoverFiles() {
-        // Em GitHub Pages, a API devolve a lista real do repositorio a cada abertura.
-        // Para dominio proprio, configurar meta github-repo no <head> ou index.json.
-        const repo = repoId();
-        if (repo) {
-          try { return await githubFiles(repo); } catch (e) { /* tenta fallback */ }
-        }
-        try { return await manifestFiles(); } catch (e) { /* tenta autoindex */ }
-        return await autoIndexFiles();
-      }
-
-      function isPayloadSelection(name) {
-        if (name === "hen" || name === "haidhen") return true;
-        if (typeof name !== "string" || name.indexOf("payloads/") !== 0) return false;
-        const encoded = name.slice("payloads/".length);
-        try {
-          const decoded = decodeURIComponent(encoded);
-          return cleanName(decoded) && encodeURIComponent(decoded) === encoded;
-        } catch (e) { return false; }
-      }
 
       async function startHen(name) {
-        if (started || !isPayloadSelection(name)) return;
+        if (started || (name !== "hen" && name !== "haidhen")) return;
         started = true;
-        // A URL continua jb.html: apenas o JS recebe o nome selecionado.
+        // Escolha guardada so nesta pagina; a URL continua jb.html.
         window.__jbSelectedPayload = name;
         choice.style.display = "none";
-        panel.style.display = "none";
         spin.classList.add("active");
         btnHen.disabled = true;
         btnHaidhen.disabled = true;
-        btnPayloads.disabled = true;
         try {
-          await import("./jb.js?v=22");
+          await import("./jb.js?v=21");
         } catch (error) {
           spin.classList.remove("active");
           document.body.className = "fail";
@@ -407,71 +240,32 @@
         }
       }
 
-      async function showPayloads() {
-        if (started || loading) return;
-        choice.style.display = "none";
-        panel.style.display = "block";
-        list.textContent = "";
-        status.textContent = "Carregando arquivos de payloads/...";
-        loading = true;
-        btnRefresh.disabled = true;
-        try {
-          const names = await discoverFiles();
-          status.textContent = names.length
-            ? names.length + " payload(s) encontrado(s). Escolha um para executar."
-            : "Nenhum arquivo .bin encontrado em payloads/.";
-          for (const filename of names) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "payload-entry";
-            btn.textContent = filename.slice(0, -4); // nunca mostra .bin
-            btn.title = filename;
-            const target = "payloads/" + encodeURIComponent(filename);
-            btn.addEventListener("click", () => startHen(target));
-            list.appendChild(btn);
-          }
-        } catch (err) {
-          status.textContent = "Nao foi possivel listar payloads/.";
-          const msg = document.createElement("div");
-          msg.id = "payloads-error";
-          msg.textContent = "Em GitHub Pages, use um repositorio publico. Em dominio proprio, configure github-repo no jb.html ou crie payloads/index.json.";
-          list.appendChild(msg);
-        } finally {
-          loading = false;
-          btnRefresh.disabled = false;
-        }
-      }
-
       btnHen.addEventListener("click", () => startHen("hen"));
       btnHaidhen.addEventListener("click", () => startHen("haidhen"));
-      btnPayloads.addEventListener("click", showPayloads);
-      btnRefresh.addEventListener("click", showPayloads);
-      btnBack.addEventListener("click", () => {
-        if (started) return;
-        panel.style.display = "none";
-        choice.style.display = "block";
-        btnPayloads.focus();
-      });
 
-      // Limpa hashes de links antigos para nao executar sem clique.
+      // Um link antigo com #hen / #haidhen nao deve executar automaticamente.
+      // Remove o fragmento sem navegar nem recarregar a pagina.
       if (location.hash === "#hen" || location.hash === "#haidhen") {
-        try { history.replaceState(null, "", location.pathname + location.search); }
-        catch (e) {}
+        try {
+          history.replaceState(null, "", location.pathname + location.search);
+        } catch (e) {}
       }
 
-      // Retoma apenas reload automatico recente do proprio exploit.
-      // Uma nova visita apos reiniciar o PS4 apresenta os 3 botoes.
+      // Retoma APENAS uma tentativa automatica do exploit, em poucos segundos.
+      // Depois de reiniciar/abrir o navegador normalmente, exige novo clique.
       let resume = null;
       try {
         const key = "jb-retry-payload-v2";
         const raw = sessionStorage.getItem(key);
-        sessionStorage.removeItem(key);
+        sessionStorage.removeItem(key); // consumo unico
         if (raw) {
           const data = JSON.parse(raw);
           const nav = window.performance && window.performance.navigation;
           const isReload = !nav || nav.type === 1;
           if (isReload && Date.now() < data.expires &&
-              isPayloadSelection(data.name)) resume = data.name;
+              (data.name === "hen" || data.name === "haidhen")) {
+            resume = data.name;
+          }
         }
       } catch (e) {}
       if (resume) startHen(resume);
